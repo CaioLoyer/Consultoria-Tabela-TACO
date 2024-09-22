@@ -6,8 +6,8 @@ import zipfile
 from matplotlib.backends.backend_pdf import PdfPages
 import os
 
-pathCsv = os.path.join(os.path.dirname(__file__), '../data/taco.csv')
-tabelaTaco = pd.read_csv(pathCsv, on_bad_lines='skip')
+PATHCSV = os.path.join(os.path.dirname(__file__), '../data/taco.csv')
+tabelaTaco = pd.read_csv(PATHCSV, on_bad_lines='skip')
 
 def toCsv(df, data):
     buffer = StringIO()
@@ -63,21 +63,25 @@ def main():
     )
 
     dataSelecionada = st.date_input("Selecione a data:")
-
-    # Exibir a data formatada no padrão brasileiro (DD/MM/YYYY)
     data_formatada = dataSelecionada.strftime("%d/%m/%Y")
 
     if st.button("Exibir Seleção de Alimentos"):
-        st.session_state.alimentosSelecionados = novosSelecionados
-        st.session_state.tabelaConfirmada = True
+        if not novosSelecionados:
+            st.error("Nenhum alimento foi selecionado. Por favor, selecione ao menos um alimento.")
+        else:
+            st.session_state.alimentosSelecionados = novosSelecionados
+            st.session_state.tabelaConfirmada = True
 
     if st.button("Salvar Refeições"):
-        refeicao = {
-            'data': data_formatada,
-            'alimentos': novosSelecionados
-        }
-        st.session_state.referenciasArmazenadas.append(refeicao)
-        st.write("Refeição salva com sucesso!")
+        if not novosSelecionados:
+            st.error("Não é possível salvar uma refeição sem alimentos. Selecione pelo menos um alimento.")
+        else:
+            refeicao = {
+                'data': data_formatada,
+                'alimentos': novosSelecionados
+            }
+            st.session_state.referenciasArmazenadas.append(refeicao)
+            st.write("Refeição salva com sucesso!")
 
     if st.button("Limpar Lista de Alimentos"):
         st.session_state.alimentosSelecionados = []
@@ -87,27 +91,31 @@ def main():
     if st.session_state.tabelaConfirmada:
         tabelaFiltrada = tabelaTaco[tabelaTaco['Nome'].isin(st.session_state.alimentosSelecionados)]
 
-        todasAsColunas = tabelaTaco.columns.tolist()
+        todasAsColunas = [col for col in tabelaTaco.columns if col not in ['id', 'Nome']]
+        
         colunasSelecionadas = st.multiselect(
             "Selecione as colunas para consulta:",
             todasAsColunas,
-            default=['Nome', 'Energia (kcal)', 'Proteína (g)', 'Lipídeos (g)', 'Colesterol (mg)', 'Carboidrato (g)', 'Fibra Alimentar (g)']
+            default=['Energia (kcal)', 'Proteína (g)', 'Lipídeos (g)', 'Colesterol (mg)', 'Carboidrato (g)', 'Fibra Alimentar (g)']
         )
+
+        colunasSelecionadas.insert(0, 'Nome')
+        colunasSelecionadas.insert(0, 'id')
 
         tabelaFiltrada = tabelaFiltrada[colunasSelecionadas]
 
-        for coluna in colunasSelecionadas[1:]:
+        for coluna in colunasSelecionadas[2:]:  # Começar após 'ID' e 'Nome'
             tabelaFiltrada[coluna] = pd.to_numeric(tabelaFiltrada[coluna], errors='coerce').fillna(0)
 
-        tabelaFiltrada = tabelaFiltrada[(tabelaFiltrada[colunasSelecionadas[1:]] > 0).any(axis=1)]
+        tabelaFiltrada = tabelaFiltrada[(tabelaFiltrada[colunasSelecionadas[2:]] > 0).any(axis=1)]
 
-        somaNutrientes = tabelaFiltrada.drop(columns='Nome').sum()
+        somaNutrientes = tabelaFiltrada.drop(columns=['id', 'Nome']).sum()
 
         st.write("Tabela de nutrientes dos alimentos selecionados:")
         st.dataframe(tabelaFiltrada)
 
         figBar, axBar = plt.subplots(figsize=(10, 7))
-        tabelaFiltrada.set_index('Nome')[colunasSelecionadas[1:]].plot(kind='barh', stacked=True, ax=axBar)
+        tabelaFiltrada.set_index('Nome')[colunasSelecionadas[2:]].plot(kind='barh', stacked=True, ax=axBar)
         axBar.set_title("Total de Nutrientes por Alimento")
         axBar.set_xlabel("Quantidade")
         axBar.set_ylabel("Alimento")
@@ -115,7 +123,7 @@ def main():
         st.pyplot(figBar)
 
         figsAndTitles = []
-        for coluna in colunasSelecionadas[1:]:
+        for coluna in colunasSelecionadas[2:]:
             dados = tabelaFiltrada[['Nome', coluna]]
             dados = dados[dados[coluna] > 0]
             dadosGrouped = dados.groupby('Nome').sum()
@@ -131,7 +139,7 @@ def main():
                 st.write(f"Gráfico de {coluna}:")
                 st.write("Não há nenhum alimento com este nutriente")
 
-        nomeArquivo = f"dadosRefeicao_{dataSelecionada.strftime('%d-%m-%Y')}"  # Formato brasileiro para o arquivo
+        nomeArquivo = f"dadosRefeicao_{dataSelecionada.strftime('%d-%m-%Y')}" 
 
         csv = toCsv(tabelaFiltrada, nomeArquivo)
         st.download_button(
@@ -164,4 +172,5 @@ def main():
             file_name=f'{nomeArquivo}_graficos_e_csv.zip',
             mime='application/zip'
         )
+
 main()

@@ -4,9 +4,10 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 import zipfile
 import io
+import os
 
-pathCsv = 'C:/Users/ricar/OneDrive/Documentos/nutriçãoStreamlit/data/taco.csv'
-tabelaTaco = pd.read_csv(pathCsv, on_bad_lines='skip')
+PATHCSV = os.path.join(os.path.dirname(__file__), '../data/taco.csv')
+tabelaTaco = pd.read_csv(PATHCSV, on_bad_lines='skip').loc[:, ~pd.read_csv(PATHCSV, on_bad_lines='skip').columns.str.contains('^Unnamed')]
 
 def main():
     st.title("Relatório Geral de Nutrientes")
@@ -64,9 +65,10 @@ def main():
 
             zipBuffer = io.BytesIO()
             with zipfile.ZipFile(zipBuffer, 'w') as zipFile:
-                figTotalPath = 'totalGeralNutrientes.png'
-                figTotal.savefig(figTotalPath)
-                zipFile.write(figTotalPath)
+                imgTotalBytes = io.BytesIO()
+                figTotal.savefig(imgTotalBytes, format='png')
+                imgTotalBytes.seek(0)
+                zipFile.writestr('totalGeralNutrientes.png', imgTotalBytes.getvalue())
                 
                 for nutriente in nutrientes:
                     if not nutrientesTotais[nutriente].empty:
@@ -76,9 +78,11 @@ def main():
                         axBar.set_xlabel("Quantidade")
                         axBar.set_ylabel("Alimento")
                         
-                        figBarPath = f'{nutriente.replace(" ", "_")}.png'
-                        figBar.savefig(figBarPath)
-                        zipFile.write(figBarPath)
+                        # Salvar o gráfico em memória e adicionar ao ZIP
+                        imgBytes = io.BytesIO()
+                        figBar.savefig(imgBytes, format='png')
+                        imgBytes.seek(0)
+                        zipFile.writestr(f'{nutriente.replace(" ", "_")}.png', imgBytes.getvalue())
                         plt.close(figBar)
 
             st.download_button(
@@ -89,4 +93,5 @@ def main():
             )
     else:
         st.write("Nenhuma refeição foi cadastrada ainda.")
+        
 main()
