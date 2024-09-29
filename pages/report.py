@@ -7,7 +7,7 @@ import io
 import os
 
 PATHCSV = os.path.join(os.path.dirname(__file__), '../data/taco.csv')
-tabelaTaco = pd.read_csv(PATHCSV, on_bad_lines='skip').loc[:, ~pd.read_csv(PATHCSV, on_bad_lines='skip').columns.str.contains('^Unnamed')]
+tabelaTaco = pd.read_csv(PATHCSV, on_bad_lines='skip')
 
 def main():
     st.title("Relatório Geral de Nutrientes")
@@ -44,7 +44,7 @@ def main():
                 for nutriente in nutrientes:
                     st.write(f"Relatório Geral de {nutriente}")
 
-                    if not nutrientesTotais[nutriente].empty:
+                    if nutrientesTotais[nutriente].sum() > 0:
                         figBar, axBar = plt.subplots(figsize=(10, 7))
                         nutrientesTotais[nutriente].plot(kind='barh', ax=axBar)
                         axBar.set_title(f"Total de {nutriente} por Alimento em Todas as Refeições")
@@ -71,14 +71,13 @@ def main():
                 zipFile.writestr('totalGeralNutrientes.png', imgTotalBytes.getvalue())
                 
                 for nutriente in nutrientes:
-                    if not nutrientesTotais[nutriente].empty:
+                    if nutrientesTotais[nutriente].sum() > 0:
                         figBar, axBar = plt.subplots(figsize=(10, 7))
                         nutrientesTotais[nutriente].plot(kind='barh', ax=axBar)
                         axBar.set_title(f"Total de {nutriente} por Alimento em Todas as Refeições")
                         axBar.set_xlabel("Quantidade")
                         axBar.set_ylabel("Alimento")
                         
-                        # Salvar o gráfico em memória e adicionar ao ZIP
                         imgBytes = io.BytesIO()
                         figBar.savefig(imgBytes, format='png')
                         imgBytes.seek(0)
@@ -93,5 +92,5 @@ def main():
             )
     else:
         st.write("Nenhuma refeição foi cadastrada ainda.")
-        
+
 main()

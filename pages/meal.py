@@ -62,6 +62,7 @@ def main():
         default=st.session_state.alimentosSelecionados
     )
 
+
     dataSelecionada = st.date_input("Selecione a data:")
     data_formatada = dataSelecionada.strftime("%d/%m/%Y")
 
@@ -99,17 +100,20 @@ def main():
             default=['Energia (kcal)', 'Proteína (g)', 'Lipídeos (g)', 'Colesterol (mg)', 'Carboidrato (g)', 'Fibra Alimentar (g)']
         )
 
+        if not colunasSelecionadas:
+            st.error("Nenhuma coluna foi selecionada. Por favor, selecione ao menos uma coluna.")
+            return
+
         colunasSelecionadas.insert(0, 'Nome')
-        colunasSelecionadas.insert(0, 'id')
 
         tabelaFiltrada = tabelaFiltrada[colunasSelecionadas]
 
-        for coluna in colunasSelecionadas[2:]:  # Começar após 'ID' e 'Nome'
+        for coluna in colunasSelecionadas[2:]:  
             tabelaFiltrada[coluna] = pd.to_numeric(tabelaFiltrada[coluna], errors='coerce').fillna(0)
 
         tabelaFiltrada = tabelaFiltrada[(tabelaFiltrada[colunasSelecionadas[2:]] > 0).any(axis=1)]
 
-        somaNutrientes = tabelaFiltrada.drop(columns=['id', 'Nome']).sum()
+        somaNutrientes = tabelaFiltrada.drop(columns=['Nome']).sum()
 
         st.write("Tabela de nutrientes dos alimentos selecionados:")
         st.dataframe(tabelaFiltrada)
